@@ -437,7 +437,8 @@
       "dependsOn": [
         {
           "attributes": [
-            "EventDataStoreOutput"
+            "EventDataStoreOutput",
+            "SessionEventsTableOutput"
           ],
           "category": "custom",
           "resourceName": "cloudtrailLake"

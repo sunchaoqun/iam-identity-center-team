@@ -41,7 +41,49 @@ try {
 }
 };
   
+// EventBridge + DynamoDB mode
+const { DynamoDBClient, QueryCommand } = require("@aws-sdk/client-dynamodb");
+const ddb = new DynamoDBClient({ region: REGION });
+const SESSION_EVENTS_TABLE = process.env.SESSION_EVENTS_TABLE;
+
+const get_ddb_logs = async (queryId) => {
+  try {
+    const p = JSON.parse(Buffer.from(queryId.slice(4), "base64").toString("utf8"));
+    const output = [];
+    let ExclusiveStartKey;
+    do {
+      const res = await ddb.send(new QueryCommand({
+        TableName: SESSION_EVENTS_TABLE,
+        KeyConditionExpression: "pk = :pk AND sk BETWEEN :s AND :e",
+        ExpressionAttributeValues: {
+          ":pk": { S: `${p.accountId}#${p.username}` },
+          ":s": { S: p.startTime },
+          ":e": { S: `${p.endTime}~` },
+        },
+        ExclusiveStartKey,
+      }));
+      for (const it of res.Items || []) {
+        const roleName = it.roleName ? it.roleName.S : "";
+        if (p.role && !roleName.includes(p.role)) continue;
+        output.push({
+          eventID: it.eventID ? it.eventID.S : "",
+          eventName: it.eventName ? it.eventName.S : "",
+          eventSource: it.eventSource ? it.eventSource.S : "",
+          eventTime: it.eventTime ? it.eventTime.S : "",
+        });
+      }
+      ExclusiveStartKey = res.LastEvaluatedKey;
+    } while (ExclusiveStartKey);
+    return output;
+  } catch (err) {
+    console.log("Error", err);
+  }
+};
+
 exports.handler = async (event) => {
     const queryId = event["arguments"]["queryId"]
+    if (queryId && queryId.startsWith("ddb:")) {
+      return get_ddb_logs(queryId);
+    }
     return get_query(queryId);
 };

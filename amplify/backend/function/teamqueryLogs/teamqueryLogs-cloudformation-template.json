@@ -18,6 +18,10 @@
     },
     "customcloudtrailLakeEventDataStoreOutput": {
       "Type": "String"
+    },
+    "customcloudtrailLakeSessionEventsTableOutput": {
+      "Type": "String",
+      "Default": "none"
     }
   },
   "Conditions": {
@@ -78,6 +82,9 @@
             },
             "EVENT_DATA_STORE": {
               "Ref": "customcloudtrailLakeEventDataStoreOutput"
+            },
+            "SESSION_EVENTS_TABLE": {
+              "Ref": "customcloudtrailLakeSessionEventsTableOutput"
             }
           }
         },
@@ -189,6 +196,17 @@
                 "*"
               ],
               "Effect": "Allow"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Query"
+              ],
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/team-session-events-*"
+                }
+              ]
             }
           ]
         },

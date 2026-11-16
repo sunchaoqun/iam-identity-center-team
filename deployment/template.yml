@@ -6,8 +6,8 @@ Parameters:
     Description: IAM IDC Login URL
   CloudTrailAuditLogs:
     Type: "String"
-    AllowedPattern: "(read_write|read|write|none|arn.*)"
-    Description: Which events should be logged on the TEAM Application Cloudtrail Lake EventDataStore.  Acceptable values are "read","write","read_write", and "none".  You may also enter the arn of an existing Cloudtrail Lake EDS.
+    AllowedPattern: "(read_write|read|write|none|eventbridge|arn.*)"
+    Description: Which events should be logged on the TEAM Application Cloudtrail Lake EventDataStore.  Acceptable values are "read","write","read_write", and "none".  You may also enter the arn of an existing Cloudtrail Lake EDS, or "eventbridge" to use the EventBridge + DynamoDB near real-time pipeline.
   teamAdminGroup:
     Type: String
     Description: TEAM application Admin group

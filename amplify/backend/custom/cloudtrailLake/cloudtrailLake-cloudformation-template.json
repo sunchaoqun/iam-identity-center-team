@@ -1,47 +1,47 @@
 {
-  "AWSTemplateFormatVersion":"2010-09-09",
-  "Parameters":{
-    "env":{
-      "Type":"String"
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters": {
+    "env": {
+      "Type": "String"
     },
-    "CloudTrailAuditLogs":{
-      "Type":"String",
-      "AllowedPattern": "(read_write|read|write|none|arn.*)"
+    "CloudTrailAuditLogs": {
+      "Type": "String",
+      "AllowedPattern": "(read_write|read|write|none|eventbridge|arn.*)"
     }
   },
-  "Conditions":{
-    "IsOrganizationsSupported":{
-      "Fn::Not":[
+  "Conditions": {
+    "IsOrganizationsSupported": {
+      "Fn::Not": [
         {
-          "Fn::Equals":[
+          "Fn::Equals": [
             {
-              "Ref":"AWS::Partition"
+              "Ref": "AWS::Partition"
             },
             "aws-cn"
           ]
         }
       ]
     },
-    "IsReadAndWriteEnabled":{
-      "Fn::Equals":[
+    "IsReadAndWriteEnabled": {
+      "Fn::Equals": [
         {
-          "Ref":"CloudTrailAuditLogs"
+          "Ref": "CloudTrailAuditLogs"
         },
         "read_write"
       ]
     },
-    "IsReadOnlyEnabled":{
-      "Fn::Equals":[
+    "IsReadOnlyEnabled": {
+      "Fn::Equals": [
         {
-          "Ref":"CloudTrailAuditLogs"
+          "Ref": "CloudTrailAuditLogs"
         },
         "read"
       ]
     },
-    "IsAuditLogsDisabled":{
-      "Fn::Equals":[
+    "IsAuditLogsDisabled": {
+      "Fn::Equals": [
         {
-          "Ref":"CloudTrailAuditLogs"
+          "Ref": "CloudTrailAuditLogs"
         },
         "none"
       ]
@@ -81,56 +81,64 @@
           ]
         }
       ]
+    },
+    "UseEventBridge": {
+      "Fn::Equals": [
+        {
+          "Ref": "CloudTrailAuditLogs"
+        },
+        "eventbridge"
+      ]
     }
   },
-  "Resources":{
-    "myEventDataStore":{
+  "Resources": {
+    "myEventDataStore": {
       "Condition": "CreateEventDataStore",
-      "Type":"AWS::CloudTrail::EventDataStore",
-      "Properties":{
-        "Name":{
-          "Ref":"AWS::StackName"
+      "Type": "AWS::CloudTrail::EventDataStore",
+      "Properties": {
+        "Name": {
+          "Ref": "AWS::StackName"
         },
-        "MultiRegionEnabled":true,
-        "IngestionEnabled":{
-          "Fn::If":[
+        "MultiRegionEnabled": true,
+        "IngestionEnabled": {
+          "Fn::If": [
             "IsAuditLogsDisabled",
             false,
             true
           ]
         },
-        "RetentionPeriod":7,
-        "OrganizationEnabled":{
-          "Fn::If":[
+        "RetentionPeriod": 7,
+        "OrganizationEnabled": {
+          "Fn::If": [
             "IsOrganizationsSupported",
             true,
             {
-              "Ref":"AWS::NoValue"
+              "Ref": "AWS::NoValue"
             }
           ]
         },
-        "TerminationProtectionEnabled":false,
-        "AdvancedEventSelectors":[
+        "TerminationProtectionEnabled": false,
+        "AdvancedEventSelectors": [
           {
-            "Fn::If":[
+            "Fn::If": [
               "IsReadAndWriteEnabled",
               {
-                "FieldSelectors":[
+                "FieldSelectors": [
                   {
-                    "Field":"eventCategory",
-                    "Equals":[
+                    "Field": "eventCategory",
+                    "Equals": [
                       "Management"
                     ]
                   }
                 ]
               },
               {
-                "FieldSelectors":[
+                "FieldSelectors": [
                   {
-                    "Field":"readOnly",
-                    "Equals":[
+                    "Field": "readOnly",
+                    "Equals": [
                       {
-                        "Fn::If":[
+                        "Fn::If": [
                           "IsReadOnlyEnabled",
                           true,
                           false
@@ -139,8 +147,8 @@
                     ]
                   },
                   {
-                    "Field":"eventCategory",
-                    "Equals":[
+                    "Field": "eventCategory",
+                    "Equals": [
                       "Management"
                     ]
                   }
@@ -150,11 +158,294 @@
           }
         ]
       }
+    },
+    "SessionEventsTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Condition": "UseEventBridge",
+      "Properties": {
+        "TableName": {
+          "Fn::Sub": "team-session-events-${env}"
+        },
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "sk",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "pk",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "sk",
+            "KeyType": "RANGE"
+          }
+        ],
+        "TimeToLiveSpecification": {
+          "AttributeName": "ttl",
+          "Enabled": true
+        },
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": true
+        }
+      }
+    },
+    "OrgIdRole": {
+      "Type": "AWS::IAM::Role",
+      "Condition": "UseEventBridge",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "org",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "organizations:DescribeOrganization",
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "OrgIdFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Condition": "UseEventBridge",
+      "Properties": {
+        "Runtime": "python3.13",
+        "Handler": "index.handler",
+        "Timeout": 30,
+        "Role": {
+          "Fn::GetAtt": [
+            "OrgIdRole",
+            "Arn"
+          ]
+        },
+        "Code": {
+          "ZipFile": "import boto3, cfnresponse\ndef handler(event, context):\n    data = {}\n    status = cfnresponse.SUCCESS\n    try:\n        if event[\"RequestType\"] != \"Delete\":\n            data[\"OrgId\"] = boto3.client(\"organizations\").describe_organization()[\"Organization\"][\"Id\"]\n    except Exception as e:\n        print(e)\n        status = cfnresponse.FAILED\n    cfnresponse.send(event, context, status, data)\n"
+        }
+      }
+    },
+    "OrgId": {
+      "Type": "Custom::OrgId",
+      "Condition": "UseEventBridge",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "OrgIdFunction",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "SessionEventBus": {
+      "Type": "AWS::Events::EventBus",
+      "Condition": "UseEventBridge",
+      "Properties": {
+        "Name": "team-audit-bus"
+      }
+    },
+    "SessionEventBusPolicy": {
+      "Type": "AWS::Events::EventBusPolicy",
+      "Condition": "UseEventBridge",
+      "Properties": {
+        "EventBusName": {
+          "Ref": "SessionEventBus"
+        },
+        "StatementId": "AllowOrgPutEvents",
+        "Statement": {
+          "Effect": "Allow",
+          "Principal": "*",
+          "Action": "events:PutEvents",
+          "Resource": {
+            "Fn::GetAtt": [
+              "SessionEventBus",
+              "Arn"
+            ]
+          },
+          "Condition": {
+            "StringEquals": {
+              "aws:PrincipalOrgID": {
+                "Fn::GetAtt": [
+                  "OrgId",
+                  "OrgId"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "IngestRole": {
+      "Type": "AWS::IAM::Role",
+      "Condition": "UseEventBridge",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ingest",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": "dynamodb:PutItem",
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "SessionEventsTable",
+                      "Arn"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "IngestFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Condition": "UseEventBridge",
+      "Properties": {
+        "Runtime": "python3.13",
+        "Handler": "index.handler",
+        "Timeout": 30,
+        "Architectures": [
+          "arm64"
+        ],
+        "Role": {
+          "Fn::GetAtt": [
+            "IngestRole",
+            "Arn"
+          ]
+        },
+        "Environment": {
+          "Variables": {
+            "TABLE": {
+              "Ref": "SessionEventsTable"
+            },
+            "TTL_DAYS": "90"
+          }
+        },
+        "Code": {
+          "ZipFile": "import os, time, boto3\ntable = boto3.resource(\"dynamodb\").Table(os.environ[\"TABLE\"])\nTTL_DAYS = int(os.environ.get(\"TTL_DAYS\", \"90\"))\n\ndef handler(event, context):\n    d = event.get(\"detail\", {})\n    ui = d.get(\"userIdentity\", {})\n    pid = ui.get(\"principalId\", \"\")\n    user = (pid.split(\":\", 1)[1] if \":\" in pid else pid).lower()\n    issuer = ui.get(\"sessionContext\", {}).get(\"sessionIssuer\", {})\n    account = d.get(\"recipientAccountId\") or event.get(\"account\")\n    item = {\n        \"pk\": f\"{account}#{user}\",\n        \"sk\": f\"{d.get('eventTime')}#{d.get('eventID')}\",\n        \"eventID\": d.get(\"eventID\"),\n        \"eventName\": d.get(\"eventName\"),\n        \"eventSource\": d.get(\"eventSource\"),\n        \"eventTime\": d.get(\"eventTime\"),\n        \"awsRegion\": d.get(\"awsRegion\"),\n        \"sourceIPAddress\": d.get(\"sourceIPAddress\"),\n        \"errorCode\": d.get(\"errorCode\"),\n        \"roleArn\": issuer.get(\"arn\"),\n        \"roleName\": issuer.get(\"userName\"),\n        \"ingestTime\": time.strftime(\"%Y-%m-%dT%H:%M:%SZ\", time.gmtime()),\n        \"ttl\": int(time.time()) + TTL_DAYS * 86400,\n    }\n    table.put_item(Item={k: v for k, v in item.items() if v is not None})\n"
+        }
+      }
+    },
+    "IngestRule": {
+      "Type": "AWS::Events::Rule",
+      "Condition": "UseEventBridge",
+      "Properties": {
+        "EventBusName": {
+          "Ref": "SessionEventBus"
+        },
+        "State": "ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS",
+        "EventPattern": {
+          "detail-type": [
+            "AWS API Call via CloudTrail",
+            "AWS Console Signin via CloudTrail"
+          ],
+          "detail": {
+            "userIdentity": {
+              "sessionContext": {
+                "sessionIssuer": {
+                  "userName": [
+                    {
+                      "prefix": "AWSReservedSSO_"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "Targets": [
+          {
+            "Id": "ingest",
+            "Arn": {
+              "Fn::GetAtt": [
+                "IngestFunction",
+                "Arn"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "IngestPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Condition": "UseEventBridge",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "IngestFunction"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "IngestRule",
+            "Arn"
+          ]
+        }
+      }
     }
   },
-  "Outputs":{
-    "EventDataStoreOutput":{
-      "Description":"The event data store ID",
+  "Outputs": {
+    "EventDataStoreOutput": {
+      "Description": "The event data store ID",
       "Value": {
         "Fn::If": [
           "CreateEventDataStore",
@@ -164,6 +455,31 @@
           {
             "Ref": "CloudTrailAuditLogs"
           }
+        ]
+      }
+    },
+    "SessionEventsTableOutput": {
+      "Value": {
+        "Fn::If": [
+          "UseEventBridge",
+          {
+            "Ref": "SessionEventsTable"
+          },
+          "none"
+        ]
+      }
+    },
+    "SessionEventBusArnOutput": {
+      "Value": {
+        "Fn::If": [
+          "UseEventBridge",
+          {
+            "Fn::GetAtt": [
+              "SessionEventBus",
+              "Arn"
+            ]
+          },
+          "none"
         ]
       }
     }

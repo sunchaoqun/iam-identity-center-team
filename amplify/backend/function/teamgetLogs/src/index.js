@@ -156,6 +156,18 @@ export const handler = async (event) => {
   data = data["dynamodb"]["NewImage"]
   const id = data["id"]["S"]
   console.log("Event", data);
+  if (EventDataStore === "eventbridge") {
+    // EventBridge + DynamoDB mode: encode query params; teamqueryLogs reads DynamoDB
+    const params = {
+      startTime: data["startTime"]["S"],
+      endTime: data["endTime"]["S"],
+      username: data["username"]["S"].replace('idc_', '').toLowerCase(),
+      accountId: data["accountId"]["S"],
+      role: data["role"]["S"],
+      nonce: Date.now(),
+    };
+    return updateItem(id, "ddb:" + Buffer.from(JSON.stringify(params)).toString("base64"));
+  }
   const queryId = await start_query(data);
   let status = await get_query_status(queryId);
   while (status) {
