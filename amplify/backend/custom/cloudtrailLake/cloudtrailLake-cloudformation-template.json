@@ -255,7 +255,7 @@
           ]
         },
         "Code": {
-          "ZipFile": "import boto3, cfnresponse\ndef handler(event, context):\n    data = {}\n    status = cfnresponse.SUCCESS\n    try:\n        if event[\"RequestType\"] != \"Delete\":\n            data[\"OrgId\"] = boto3.client(\"organizations\").describe_organization()[\"Organization\"][\"Id\"]\n    except Exception as e:\n        print(e)\n        status = cfnresponse.FAILED\n    cfnresponse.send(event, context, status, data)\n"
+          "ZipFile": "import json, urllib.request, boto3\n\ndef send(event, context, status, data, reason=\"\"):\n    body = json.dumps({\n        \"Status\": status,\n        \"Reason\": reason or (\"See CloudWatch log stream: \" + context.log_stream_name),\n        \"PhysicalResourceId\": event.get(\"PhysicalResourceId\") or context.log_stream_name,\n        \"StackId\": event[\"StackId\"],\n        \"RequestId\": event[\"RequestId\"],\n        \"LogicalResourceId\": event[\"LogicalResourceId\"],\n        \"Data\": data,\n    }).encode()\n    req = urllib.request.Request(event[\"ResponseURL\"], data=body, method=\"PUT\",\n                                 headers={\"Content-Type\": \"\", \"Content-Length\": str(len(body))})\n    urllib.request.urlopen(req, timeout=30)\n\ndef handler(event, context):\n    data, status, reason = {}, \"SUCCESS\", \"\"\n    try:\n        if event[\"RequestType\"] != \"Delete\":\n            data[\"OrgId\"] = boto3.client(\"organizations\").describe_organization()[\"Organization\"][\"Id\"]\n    except Exception as e:\n        print(e)\n        status, reason = \"FAILED\", str(e)[:200]\n    send(event, context, status, data, reason)\n"
         }
       }
     },
