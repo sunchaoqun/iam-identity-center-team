@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: TEAM - forward IAM Identity Center session API calls (CloudTrail via EventBridge) to the central TEAM audit bus
+Parameters:
+  CentralBusArn:
+    Type: String
+    Description: ARN of the team-audit-bus event bus in the TEAM account
+Resources:
+  ForwardRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: put-to-central-bus
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: events:PutEvents
+                Resource: !Ref CentralBusArn
+  ForwardRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Forward AWSReservedSSO_* session API calls to TEAM
+      EventBusName: default
+      State: ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS
+      EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
+          - AWS Console Signin via CloudTrail
+        detail:
+          userIdentity:
+            sessionContext:
+              sessionIssuer:
+                userName:
+                  - prefix: AWSReservedSSO_
+      Targets:
+        - Id: team-audit-bus
+          Arn: !Ref CentralBusArn
+          RoleArn: !GetAtt ForwardRole.Arn
