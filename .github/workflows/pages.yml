@@ -9,7 +9,7 @@ name: Deploy Jekyll site to Pages
 on:
   push:
     branches: ["main"]
-    paths: ["docs/**"]
+    paths: ["docs/**", "solution/**", ".github/workflows/pages.yml"]
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -53,6 +53,13 @@ jobs:
         env:
           JEKYLL_ENV: production
       
+      - name: Publish solution page as site index
+        # Solution overview becomes the landing page; original Jekyll home moves to docs-home.html
+        run: |
+          mv _site/index.html _site/docs-home.html
+          cp ../solution/index.html _site/index.html
+          touch _site/.nojekyll
+
       - name: Upload artifact
         # Automatically uploads an artifact from the './_site' directory by default
         uses: actions/upload-pages-artifact@v3

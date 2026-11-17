@@ -1,0 +1,263 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TEAM · 临时提权与近实时审计</title><style>
+:root{--bg:#0b1020;--panel:#121a33;--panel2:#18224a;--line:rgba(255,255,255,.08);--txt:#e8ecff;--sub:#a3acd6;--mut:#6f79a8;
+--a1:#ff9900;--a2:#7c5cff;--a3:#22d3ee;--ok:#34d399;--warn:#fbbf24;--bad:#f87171;--mono:'SF Mono',Menlo,Consolas,monospace;
+--sans:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Segoe UI',Roboto,sans-serif}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:radial-gradient(1200px 600px at 10% -10%,rgba(124,92,255,.25),transparent 60%),radial-gradient(900px 500px at 110% 10%,rgba(255,153,0,.18),transparent 60%),var(--bg);
+color:var(--txt);font-family:var(--sans);line-height:1.6;min-height:100vh}
+nav{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:8px;padding:14px 40px;background:rgba(11,16,32,.75);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+nav .logo{font-weight:800;letter-spacing:.04em;margin-right:auto}nav .logo b{color:var(--a1)}
+nav a{color:var(--sub);text-decoration:none;padding:7px 14px;border-radius:999px;font-size:14px;transition:.2s}
+nav a:hover{color:var(--txt);background:var(--panel2)}nav a.on{color:#111;background:var(--a1);font-weight:600}
+.wrap{max-width:1180px;margin:0 auto;padding:48px 40px 80px}
+.hero{padding:40px 0 24px}.kicker{color:var(--a1);font-size:13px;letter-spacing:.16em;text-transform:uppercase;font-weight:700}
+h1{font-size:44px;line-height:1.15;margin:12px 0 16px;letter-spacing:-.02em}
+h1 .g{background:linear-gradient(90deg,var(--a1),#ffcf70 40%,var(--a2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:18px;color:var(--sub);max-width:820px}
+h2{font-size:26px;margin:56px 0 18px;display:flex;align-items:center;gap:12px}
+h2 .n{font-family:var(--mono);font-size:13px;color:var(--a1);border:1px solid rgba(255,153,0,.4);padding:2px 8px;border-radius:6px}
+h3{margin:0 0 6px;font-size:17px}
+.grid{display:grid;gap:18px}.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr}h1{font-size:32px}.wrap{padding:32px 20px}}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:22px;transition:.25s}
+.card:hover{transform:translateY(-3px);border-color:rgba(255,153,0,.35);box-shadow:0 12px 32px rgba(0,0,0,.35)}
+.card p{color:var(--sub);margin:0;font-size:14.5px}
+.ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:20px;margin-bottom:14px;background:rgba(255,153,0,.12);color:var(--a1)}
+.ic.p{background:rgba(124,92,255,.15);color:#b4a3ff}.ic.c{background:rgba(34,211,238,.12);color:var(--a3)}.ic.g{background:rgba(52,211,153,.12);color:var(--ok)}
+.stat{font-size:34px;font-weight:800;font-family:var(--mono);color:var(--a1)}.stat small{font-size:14px;color:var(--sub);font-weight:500}
+.lbl{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+table{width:100%;border-collapse:collapse;font-size:14px;background:var(--panel);border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+th{text-align:left;padding:12px 16px;color:var(--mut);font-weight:600;background:var(--panel2);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase}
+td{padding:12px 16px;border-top:1px solid var(--line);color:var(--sub);vertical-align:top}td b{color:var(--txt)}
+tr:hover td{background:rgba(255,255,255,.02)}
+code{font-family:var(--mono);font-size:12.5px;background:rgba(255,255,255,.07);padding:2px 6px;border-radius:5px;color:#ffd08a}
+pre{font-family:var(--mono);font-size:13px;background:#070b17;border:1px solid var(--line);border-radius:12px;padding:18px 20px;overflow:auto;color:#cfd6ff;line-height:1.7;margin:0}
+pre .c{color:#5f6a99}pre .k{color:#ffb547}
+.tag{display:inline-block;font-size:12px;padding:3px 10px;border-radius:999px;font-weight:600}
+.t-ok{background:rgba(52,211,153,.14);color:var(--ok)}.t-w{background:rgba(251,191,36,.14);color:var(--warn)}.t-b{background:rgba(248,113,113,.14);color:var(--bad)}.t-p{background:rgba(124,92,255,.18);color:#c3b5ff}
+.note{border-left:3px solid var(--a1);background:rgba(255,153,0,.07);padding:14px 18px;border-radius:0 12px 12px 0;color:var(--sub);font-size:14.5px}
+.foot{margin-top:64px;padding-top:24px;border-top:1px solid var(--line);color:var(--mut);font-size:13px;display:flex;justify-content:space-between}
+.foot a{color:var(--a1);text-decoration:none}
+/* flow */
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.node{flex:1;min-width:150px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center;position:relative}
+.node .t{font-weight:700;font-size:14.5px}.node .s{font-size:12.5px;color:var(--sub);margin-top:4px}
+.arrow{display:grid;place-items:center;color:var(--a1);font-size:22px;padding:0 8px}
+/* timeline */
+.tl{position:relative;padding-left:34px}.tl:before{content:"";position:absolute;left:12px;top:6px;bottom:6px;width:2px;background:linear-gradient(var(--a1),var(--a2))}
+.st{position:relative;margin-bottom:22px}.st:before{content:attr(data-n);position:absolute;left:-34px;top:0;width:26px;height:26px;border-radius:50%;background:var(--bg);border:2px solid var(--a1);color:var(--a1);font:700 12px var(--mono);display:grid;place-items:center}
+.st h3{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.st p{color:var(--sub);margin:4px 0 10px;font-size:14.5px}
+@media(prefers-reduced-motion:no-preference){.rv{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}.rv.in{opacity:1;transform:none}}
+
+.pg{display:none}.pg.on{display:block}nav a{cursor:pointer}</style></head>
+<body><nav><div class="logo">TEAM <b>·</b> 临时提权访问</div><a href="#ov" data-k="ov">① 方案概览</a><a href="#ar" data-k="ar">② 架构与原理</a><a href="#dp" data-k="dp">③ 部署与避坑</a><a href="docs-home.html" style="margin-left:8px">📚 TEAM 文档</a></nav><div class="wrap"><section class="pg" id="pg-ov">
+<section class="hero rv"><div class="kicker">Solution Overview</div>
+<h1>让最高权限<span class="g">按需而来、到期即走</span></h1>
+<p class="lead">TEAM（Temporary Elevated Access Management）基于 IAM Identity Center，为多账号环境提供「申请 → 审批 → 自动授权 → 到期回收 → 审计」的临时提权闭环。会话中的每一次 API 调用通过 <b>EventBridge 近实时推送</b>写入 DynamoDB，审计员在 TEAM 界面里秒级可见。</p></section>
+
+<div class="grid g4 rv" style="margin-top:28px">
+<div class="card"><div class="lbl">常驻高权限</div><div class="stat">0</div><p>平时不分配任何高权限，按需申请</p></div>
+<div class="card"><div class="lbl">授权方式</div><div class="stat">JIT</div><p>审批通过后自动创建账号分配</p></div>
+<div class="card"><div class="lbl">审计延迟</div><div class="stat">~4<small> 秒</small></div><p>PoC 实测中位数，P95 约 17 秒</p></div>
+<div class="card"><div class="lbl">部署方式</div><div class="stat">5 <small>条命令</small></div><p>脚本化部署，含预检与自动化补全</p></div>
+</div>
+
+<h2 class="rv"><span class="n">01</span>为什么需要临时提权</h2>
+<div class="grid g3 rv">
+<div class="card"><div class="ic">⚠️</div><h3>常驻权限风险高</h3><p>长期挂着 Admin 的账号一旦被盗用，攻击窗口就是无限的。</p></div>
+<div class="card"><div class="ic p">🧾</div><h3>合规需要可追溯</h3><p>谁、在何时、因为什么工单、拿了哪个账号的什么权限，都要留痕。</p></div>
+<div class="card"><div class="ic c">⏱️</div><h3>运维又不能被卡住</h3><p>紧急变更需要快速拿到权限，流程不能比人工找管理员还慢。</p></div>
+</div>
+
+<h2 class="rv"><span class="n">02</span>四种角色</h2>
+<div class="grid g4 rv">
+<div class="card"><div class="ic">🙋</div><h3>申请人</h3><p>选择账号、权限集、开始时间与时长，填写工单号和理由。</p></div>
+<div class="card"><div class="ic g">✅</div><h3>审批人</h3><p>审核并批准 / 拒绝；系统不允许审批自己的申请。</p></div>
+<div class="card"><div class="ic c">🔍</div><h3>审计员</h3><p>只读查看所有历史申请与会话操作记录。</p></div>
+<div class="card"><div class="ic p">⚙️</div><h3>管理员</h3><p>配置 Eligibility（谁能申请什么）与 Approver（谁来批）策略。</p></div>
+</div>
+
+<h2 class="rv"><span class="n">03</span>一次完整的临时授权</h2>
+<div class="flow rv">
+<div class="node"><div class="t">① 提交申请</div><div class="s">账号 · 权限集 · 时长 · 工单</div></div><div class="arrow">→</div>
+<div class="node"><div class="t">② 审批</div><div class="s">按策略路由到审批组</div></div><div class="arrow">→</div>
+<div class="node"><div class="t">③ 自动授权</div><div class="s">Step Functions 创建分配</div></div><div class="arrow">→</div>
+<div class="node"><div class="t">④ 使用</div><div class="s">门户进入控制台 / CLI</div></div><div class="arrow">→</div>
+<div class="node"><div class="t">⑤ 到期回收</div><div class="s">自动删除，或提前撤销</div></div>
+</div>
+
+<h2 class="rv"><span class="n">04</span>方案能力</h2>
+<div class="grid g3 rv">
+<div class="card"><div class="ic">⚡</div><h3>秒级会话审计</h3><p>CloudTrail 事件经 EventBridge 推送入库，PoC 实测中位数约 4 秒即可在 TEAM 中查看。</p></div>
+<div class="card"><div class="ic p">🌐</div><h3>全组织自动覆盖</h3><p>StackSets 把转发规则下发到所有成员账号；新加入组织的账号自动部署。</p></div>
+<div class="card"><div class="ic c">🗂️</div><h3>按会话精确检索</h3><p>按 账号 + 用户 + 时间窗 主键查询，直接在 Session activity 中展示并可导出 CSV。</p></div>
+<div class="card"><div class="ic g">🛠️</div><h3>脚本化部署</h3><p>预检、默认参数、自动创建组织 Trail、等待资源就绪，5 条命令完成部署。</p></div>
+<div class="card"><div class="ic">🔒</div><h3>最小暴露</h3><p>中心总线只接受本组织写入；只转发 Identity Center 会话产生的调用。</p></div>
+<div class="card"><div class="ic p">💰</div><h3>低成本</h3><p>DynamoDB 按需计费 + 90 天 TTL；组织 Trail 首份管理事件免费。</p></div>
+</div>
+<h2 class="rv"><span class="n">05</span>权限集设计建议</h2>
+<p class="rv" style="color:var(--sub);margin-top:-6px">TEAM 授权的单位是 IAM Identity Center 权限集，<b>任何权限集都可以临时授予</b>，不只限于 Admin。建议按运维任务拆分最小权限，统一使用 <code>TEAM-</code> 前缀。</p>
+<table class="rv"><tr><th>权限集</th><th>典型内容</th><th>场景</th><th>建议时长</th><th>审批</th></tr>
+<tr><td><b>TEAM-ReadOnly</b></td><td><code>ReadOnlyAccess</code></td><td>排查问题、查看配置</td><td>8 小时</td><td><span class="tag t-ok">可免审批</span></td></tr>
+<tr><td><b>TEAM-EC2-Ops</b></td><td>EC2 启停、改实例类型</td><td>日常运维变更</td><td>4 小时</td><td><span class="tag t-w">需审批</span></td></tr>
+<tr><td><b>TEAM-DB-Ops</b></td><td>RDS 快照、参数组、重启</td><td>数据库变更窗口</td><td>4 小时</td><td><span class="tag t-w">需审批</span></td></tr>
+<tr><td><b>TEAM-Billing</b></td><td><code>Billing</code></td><td>财务临时查账</td><td>8 小时</td><td><span class="tag t-w">需审批</span></td></tr>
+<tr><td><b>TEAM-BreakGlass</b></td><td><code>AdministratorAccess</code></td><td>紧急事故</td><td>1 小时</td><td><span class="tag t-b">严格审批</span></td></tr></table>
+<div class="grid g2 rv" style="margin-top:18px">
+<div class="card"><h3>🎛️ 每个权限集可单独配置</h3><p>谁能申请（组 / 用户 × 账号 / OU）、最长时长、是否需要审批、由谁审批。</p></div>
+<div class="card"><h3>⚠️ 两点注意</h3><p>① 不要用已分配到 Management 账号的权限集，委派管理员管不了；② 会话时长建议设 1 小时，缩短授权结束后会话仍有效的窗口。</p></div>
+</div>
+</section><section class="pg" id="pg-ar">
+<section class="hero rv"><div class="kicker">Architecture</div>
+<h1>三层账号 · <span class="g">一条实时审计流</span></h1>
+<p class="lead">TEAM 部署在专用委派管理员账号；用户与组统一由 IAM Identity Center 管理；目标账号只承受临时分配。审计事件从每个成员账号的 default bus 推送到中心总线，写入 DynamoDB 供 TEAM 读取。</p></section>
+
+<h2 class="rv"><span class="n">01</span>账号与身份结构</h2>
+<style>
+.org{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:18px;padding:26px}
+.box{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:rgba(255,255,255,.03)}
+.box .h{display:flex;align-items:center;gap:8px;font-weight:700}
+.box .id{font:12px var(--mono);color:var(--mut);margin-left:auto}
+.box ul{margin:8px 0 0;padding-left:18px;color:var(--sub);font-size:13.5px}
+.box li{margin:2px 0}
+.b-org{border-color:rgba(255,153,0,.55);background:rgba(255,153,0,.06)}
+.b-mg{border-color:rgba(248,113,113,.45)}.b-team{border-color:rgba(124,92,255,.6);background:rgba(124,92,255,.07)}
+.b-wl{border-color:rgba(34,211,238,.45)}.b-ou{border-style:dashed;padding:14px}
+.kids{position:relative;margin-left:22px;padding-left:22px;border-left:2px solid rgba(255,153,0,.35);display:grid;gap:14px;margin-top:14px}
+.kids>*{position:relative}.kids>*:before{content:"";position:absolute;left:-24px;top:22px;width:22px;border-top:2px solid rgba(255,153,0,.35)}
+.ou-t{font:600 12.5px var(--mono);color:var(--a1);margin-bottom:10px}
+.idc{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}
+@media(max-width:900px){.idc{grid-template-columns:1fr 1fr}}
+.chip{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:13px;color:var(--sub)}
+.chip b{display:block;color:var(--txt);font-size:13.5px;margin-bottom:4px}
+.rel{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:center;margin-top:18px;font-size:14px}
+.rel .pill{padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel2)}
+.rel .ar{color:var(--a1);font-weight:700}
+</style>
+<div class="grid rv" style="grid-template-columns:1.25fr 1fr;gap:18px">
+<div class="org">
+ <div class="box b-org"><div class="h">🏛️ AWS Organization<span class="id">o-xxxxxxxx</span></div></div>
+ <div class="kids">
+  <div class="box b-mg"><div class="h">🏢 Management 账号<span class="id">111111111111</span></div>
+   <ul><li>Organizations、IAM Identity Center 组织实例</li><li>组织 Trail（CloudTrail → EventBridge 的前提）</li><li>运行 <code>init.sh</code> / StackSet</li><li>⚠️ TEAM 不能对此账号授权</li></ul></div>
+  <div class="box b-ou"><div class="ou-t">OU · Security</div>
+   <div class="box b-team"><div class="h">🛡️ TEAM 账号<span class="id">222222222222</span></div>
+    <ul><li>委派管理员：Identity Center / CloudTrail / Account</li><li>TEAM 应用：Amplify · Cognito · Step Functions</li><li><b style="color:var(--txt)">team-audit-bus</b> + DynamoDB 会话事件表</li></ul></div></div>
+  <div class="box b-ou"><div class="ou-t">OU · Workloads</div>
+   <div style="display:grid;gap:10px">
+   <div class="box b-wl"><div class="h">🎯 Prod 账号<span class="id">333333333333</span></div><ul><li>平时无高权限分配</li><li>转发规则 → team-audit-bus</li></ul></div>
+   <div class="box b-wl"><div class="h">🎯 Dev 账号<span class="id">444444444444</span></div><ul><li>转发规则 → team-audit-bus</li></ul></div></div></div>
+ </div>
+</div>
+<div class="org">
+ <div class="box b-team"><div class="h">🪪 IAM Identity Center<span class="id">由 TEAM 账号委派管理</span></div>
+  <div class="idc" style="grid-template-columns:1fr 1fr">
+   <div class="chip"><b>👤 用户</b>alice（申请人）<br>bob（审批人）<br>运维 / 审计人员</div>
+   <div class="chip"><b>👥 组</b>team_requesters<br>team_approvers<br>team_admin · team_auditor</div>
+   <div class="chip"><b>🔑 权限集</b>TEAM-ReadOnly<br>TEAM-EC2-Ops<br>TEAM-BreakGlass …</div>
+   <div class="chip"><b>📱 应用</b>TEAM IDC APP（SAML）<br>分配给以上 4 个组</div>
+  </div></div>
+ <div class="note" style="margin-top:16px">用户<b>不属于任何账号</b>。用户能访问哪个账号，由 <b>组 + 权限集 + 目标账号</b> 这条“账号分配”决定，TEAM 只是在批准的时间窗内临时创建、到期删除这条分配。</div>
+ <div class="rel">
+  <span class="pill">alice ∈ team_requesters</span><span class="ar">→ 申请 + 审批 →</span>
+  <span class="pill" style="border-color:rgba(255,153,0,.5)">TEAM-EC2-Ops @ Prod</span><span class="ar">→ 到期 →</span><span class="pill">分配自动删除</span>
+ </div>
+</div>
+</div>
+<h2 class="rv"><span class="n">02</span>近实时审计数据流</h2>
+<div class="card rv" style="padding:28px">
+<div class="flow">
+<div class="node"><div class="t">CloudTrail</div><div class="s">组织 Trail<br>（前提：必须在记录）</div></div><div class="arrow">→</div>
+<div class="node"><div class="t">default bus</div><div class="s">成员账号<br>us-west-2 / us-east-1</div></div><div class="arrow">→</div>
+<div class="node"><div class="t">转发规则</div><div class="s">仅 AWSReservedSSO_*<br>含只读事件</div></div><div class="arrow">→</div>
+<div class="node" style="border-color:rgba(255,153,0,.5)"><div class="t">team-audit-bus</div><div class="s">TEAM 账号<br>仅允许本组织写入</div></div><div class="arrow">→</div>
+<div class="node"><div class="t">Ingest λ</div><div class="s">规范化字段</div></div><div class="arrow">→</div>
+<div class="node" style="border-color:rgba(124,92,255,.6)"><div class="t">DynamoDB</div><div class="s">TTL 90 天 · PITR</div></div>
+</div>
+<div style="text-align:center;margin-top:18px;color:var(--sub);font-size:14px">TEAM Session activity → <code>teamgetLogs</code> 生成 <code>ddb:</code> queryId → <code>teamqueryLogs</code> 按主键 + 时间窗查询</div>
+</div>
+
+<h2 class="rv"><span class="n">03</span>关键设计</h2>
+<div class="grid g2 rv">
+<div class="card"><h3>🔑 主键设计</h3><p><code>pk = 账号ID#用户名</code>，<code>sk = eventTime#eventID</code>。与原 Lake SQL 的过滤条件（账号、用户、时间窗）一一对应，查询为单次 Query，不再扫描。</p></div>
+<div class="card"><h3>📖 只读事件也要</h3><p>EventBridge 规则默认只匹配写操作；转发规则与中心规则都设为 <code>ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS</code>，才能记录 Describe / List。</p></div>
+<div class="card"><h3>🌐 全局服务</h3><p>IAM、STS 等全局服务事件出现在 us-east-1，所以转发规则默认部署 <code>us-west-2 + us-east-1</code>，可通过 <code>FORWARDER_REGIONS</code> 扩展。</p></div>
+<div class="card"><h3>🧩 前端零改动</h3><p>返回字段保持 <code>eventID / eventName / eventSource / eventTime</code>，GraphQL 与 React 页面原样复用。</p></div>
+</div>
+
+<h2 class="rv"><span class="n">04</span>数据保留与取证</h2>
+<table class="rv"><tr><th>层</th><th>用途</th><th>保留</th></tr>
+<tr><td><b>DynamoDB 会话事件表</b></td><td>TEAM Session activity 实时展示、按会话检索、CSV 导出</td><td>TTL 90 天（可调）· PITR</td></tr>
+<tr><td><b>组织 Trail → S3</b></td><td>全量事件长期留存，需要时用 Athena 做跨账号取证</td><td>按 S3 生命周期策略</td></tr>
+<tr><td><b>TEAM 申请记录</b></td><td>申请、审批、工单号、理由、开始/结束/撤销时间</td><td>TEAM 自带 DynamoDB</td></tr>
+</table>
+
+
+
+<h2 class="rv"><span class="n">05</span>PoC 实测延迟</h2>
+<p class="rv" style="color:var(--sub);margin-top:-6px">2026-11-17 · us-west-2 · 目标账号 030693215636 · 用户 alice 共 59 条事件（控制台查看 EC2、创建 S3 桶）。延迟 = DynamoDB <code>ingestTime</code> − CloudTrail <code>eventTime</code>，精度 1 秒。</p>
+<div class="grid g4 rv">
+<div class="card"><div class="lbl">中位数</div><div class="stat">4<small> 秒</small></div><p>一半事件 4 秒内入库</p></div>
+<div class="card"><div class="lbl">P90 / P95</div><div class="stat">11<small> / 17 秒</small></div><p>绝大多数在 20 秒内</p></div>
+<div class="card"><div class="lbl">10 秒内到达</div><div class="stat">86<small> %</small></div><p>最快 1 秒，平均 6.5 秒</p></div>
+<div class="card"><div class="lbl">最大值</div><div class="stat">32<small> 秒</small></div><p>控制台后台调用 ListNotificationHubs</p></div>
+</div>
+<div class="grid g2 rv" style="margin-top:18px">
+<div class="card"><h3>延迟分布</h3><div style="margin-top:12px"><div style="display:flex;align-items:center;gap:12px;margin:8px 0"><div style="width:64px;font:12.5px var(--mono);color:var(--sub)">0–2s</div><div style="flex:1;background:rgba(255,255,255,.05);border-radius:8px;height:26px;overflow:hidden"><div style="width:52%;height:100%;background:linear-gradient(90deg,var(--a1),var(--a2));border-radius:8px"></div></div><div style="width:70px;text-align:right;font:13px var(--mono)">11 条 · 19%</div></div><div style="display:flex;align-items:center;gap:12px;margin:8px 0"><div style="width:64px;font:12.5px var(--mono);color:var(--sub)">3–5s</div><div style="flex:1;background:rgba(255,255,255,.05);border-radius:8px;height:26px;overflow:hidden"><div style="width:100%;height:100%;background:linear-gradient(90deg,var(--a1),var(--a2));border-radius:8px"></div></div><div style="width:70px;text-align:right;font:13px var(--mono)">21 条 · 36%</div></div><div style="display:flex;align-items:center;gap:12px;margin:8px 0"><div style="width:64px;font:12.5px var(--mono);color:var(--sub)">6–10s</div><div style="flex:1;background:rgba(255,255,255,.05);border-radius:8px;height:26px;overflow:hidden"><div style="width:90%;height:100%;background:linear-gradient(90deg,var(--a1),var(--a2));border-radius:8px"></div></div><div style="width:70px;text-align:right;font:13px var(--mono)">19 条 · 32%</div></div><div style="display:flex;align-items:center;gap:12px;margin:8px 0"><div style="width:64px;font:12.5px var(--mono);color:var(--sub)">11–20s</div><div style="flex:1;background:rgba(255,255,255,.05);border-radius:8px;height:26px;overflow:hidden"><div style="width:29%;height:100%;background:linear-gradient(90deg,var(--a1),var(--a2));border-radius:8px"></div></div><div style="width:70px;text-align:right;font:13px var(--mono)">6 条 · 10%</div></div><div style="display:flex;align-items:center;gap:12px;margin:8px 0"><div style="width:64px;font:12.5px var(--mono);color:var(--sub)">21–32s</div><div style="flex:1;background:rgba(255,255,255,.05);border-radius:8px;height:26px;overflow:hidden"><div style="width:10%;height:100%;background:linear-gradient(90deg,var(--a1),var(--a2));border-radius:8px"></div></div><div style="width:70px;text-align:right;font:13px var(--mono)">2 条 · 3%</div></div></div></div>
+<div class="card"><h3>关键写操作</h3>
+<table style="margin-top:12px"><tr><th>事件</th><th>延迟</th></tr>
+<tr><td><b>CreateBucket</b></td><td><span class="tag t-ok">7–8 秒</span></td></tr>
+<tr><td><b>PutBucketEncryption</b></td><td><span class="tag t-ok">7 秒</span></td></tr>
+<tr><td><b>DescribeInstances</b></td><td><span class="tag t-ok">4 秒</span></td></tr>
+<tr><td><b>ListBuckets</b></td><td><span class="tag t-ok">5–9 秒</span></td></tr></table>
+</div>
+</div>
+<div class="note rv" style="margin-top:18px">单次 PoC、低负载、单 Region 结果，仅作参考。CloudTrail → EventBridge 为尽力投递（best effort），AWS 未提供延迟 SLA；对外建议表述为“PoC 实测中位数约 4 秒、P95 约 17 秒，非 SLA 承诺”。</div>
+</section><section class="pg" id="pg-dp">
+<section class="hero rv"><div class="kicker">Deployment Guide</div>
+<h1>五条命令，<span class="g">把坑都提前填好</span></h1>
+<p class="lead">以下流程来自一次从零开始的真实部署，常见问题都已固化进脚本：参数默认值、部署前预检、自动创建组织 Trail、等待中心总线就绪后再下发。</p></section>
+
+<h2 class="rv"><span class="n">01</span>前置条件</h2>
+<div class="grid g3 rv">
+<div class="card"><div class="ic">🏛️</div><h3>组织与身份</h3><p>Organizations 全部功能；Identity Center <b>组织实例</b>；记下门户 URL 和 Region。</p></div>
+<div class="card"><div class="ic p">👥</div><h3>组与权限集</h3><p><code>team_admin</code>、<code>team_auditor</code>、申请组、审批组；TEAM 用的权限集<b>不要</b>分配到管理账号，会话时长建议 1 小时。</p></div>
+<div class="card"><div class="ic c">🔐</div><h3>代码仓库与密钥</h3><p>Fork 到私有 GitHub；TEAM 账号中建 Secrets Manager 密钥，键 <code>url</code> + <code>AccessToken</code>。</p></div>
+</div>
+
+<h2 class="rv"><span class="n">02</span>部署步骤</h2>
+<div class="tl rv">
+<div class="st" data-n="0"><h3>填写参数 <span class="tag t-p">2 分钟</span></h3><p>模板已默认 eventbridge 模式和 CACHE_TTL，每一项都有注释。</p>
+<pre><span class="k">cd</span> iam-identity-center-team/deployment
+<span class="k">cp</span> parameters-template.sh parameters.sh   <span class="c"># 按注释填写</span>
+<span class="k">aws</span> sso login --sso-session &lt;session&gt;</pre></div>
+<div class="st" data-n="1"><h3>委派管理员 <span class="tag t-p">1 分钟</span></h3><p>把 TEAM 账号设为 Account / CloudTrail / Identity Center 的委派管理员。</p><pre><span class="k">./init.sh</span></pre></div>
+<div class="st" data-n="2"><h3>部署 TEAM <span class="tag t-p">~20 分钟</span></h3><p>先自动跑预检，再创建主栈并触发 Amplify 构建。</p><pre><span class="k">./deploy.sh</span>   <span class="c"># 内含 ./preflight.sh</span></pre></div>
+<div class="st" data-n="3"><h3>部署审计转发 <span class="tag t-p">~5 分钟</span></h3><p>无组织 Trail 时自动创建；等待中心总线就绪后用 StackSets 下发到所有成员账号。</p><pre><span class="k">./deploy-forwarder.sh</span></pre></div>
+<div class="st" data-n="4"><h3>SAML 集成 <span class="tag t-p">5 分钟</span></h3><p>在 Identity Center 添加自定义 SAML 2.0 应用，属性映射 Subject=<code>${user:subject}</code>(persistent)、Email=<code>${user:email}</code>(basic)，并分配四个组。</p><pre><span class="k">./integration.sh</span>   <span class="c"># 输出 Start URL / ACS URL / Audience</span>
+<span class="k">cp</span> details-template.json details.json   <span class="c"># 填入 SAML metadata URL</span>
+<span class="k">./cognito.sh</span></pre></div>
+<div class="st" data-n="5"><h3>配置策略并验证 <span class="tag t-ok">完成</span></h3><p>管理员建 Eligibility / Approver 策略（Ticket No 必填）→ 申请 → 审批 → 在转发 Region 内操作 → 查表。</p>
+<pre><span class="k">aws</span> dynamodb scan --table-name team-session-events-main \
+  --query <span class="c">"Items[].[eventTime.S, ingestTime.S, eventName.S, pk.S]"</span> --output table</pre></div>
+</div>
+
+<h2 class="rv"><span class="n">03</span>踩过的坑与已内置的修复</h2>
+<table class="rv"><tr><th>#</th><th>问题</th><th>已做的处理</th><th>级别</th></tr><tr><td style="font-family:var(--mono);color:var(--a1)">01</td><td><b>CloudTrail Lake 不接受新客户</b><br><span style="font-size:13px">审计模式设为 read/write/none 时会尝试创建 Event Data Store，报 InvalidRequest 后整个构建回滚。</span></td><td>默认 <code>CLOUDTRAIL_AUDIT_LOGS=eventbridge</code>，预检对 read/write/none 发出警告</td><td><span class="tag t-b">阻断</span></td></tr><tr><td style="font-family:var(--mono);color:var(--a1)">02</td><td><b><code>none</code> 仍会创建 Lake</b><br><span style="font-size:13px">模板条件把 none 也算作「创建」，只是关闭摄入。</span></td><td>改用 eventbridge 模式；文档注明 none 的真实含义</td><td><span class="tag t-b">阻断</span></td></tr><tr><td style="font-family:var(--mono);color:var(--a1)">03</td><td><b>缺少 <code>CACHE_TTL</code></b><br><span style="font-size:13px">CloudFormation 报 Parameter 'cacheTTL' must be a number。</span></td><td>模板写入默认值，<code>deploy.sh</code> 兜底 604800，预检校验</td><td><span class="tag t-w">易错</span></td></tr><tr><td style="font-family:var(--mono);color:var(--a1)">04</td><td><b>密钥建错账号 / 键名不对</b><br><span style="font-size:13px">密钥必须在 TEAM 账号同 Region，键名精确为 url / AccessToken。</span></td><td>预检读取密钥并校验键名</td><td><span class="tag t-w">易错</span></td></tr><tr><td style="font-family:var(--mono);color:var(--a1)">05</td><td><b>GitHub 私有仓库 Repository not found</b><br><span style="font-size:13px">gh 登录不等于 git 凭证；Fine-grained token 不被支持。</span></td><td>文档要求 classic token（repo + admin:repo_hook）并执行 <code>gh auth setup-git</code></td><td><span class="tag t-w">易错</span></td></tr><tr><td style="font-family:var(--mono);color:var(--a1)">06</td><td><b>SSO token 过期</b><br><span style="font-size:13px">长时间操作后所有 CLI 命令失败。</span></td><td>预检逐个校验 profile 并提示 <code>aws sso login</code></td><td><span class="tag t-w">易错</span></td></tr><tr><td style="font-family:var(--mono);color:var(--a1)">07</td><td><b>Management 账号缺少分配</b><br><span style="font-size:13px"><code>aws configure sso</code> 列表里看不到管理账号。</span></td><td>文档列出：给运维用户在管理账号单独分配权限集</td><td><span class="tag t-w">易错</span></td></tr><tr><td style="font-family:var(--mono);color:var(--a1)">08</td><td><b>自定义资源缺 cfnresponse</b><br><span style="font-size:13px">经 Amplify 打包的 Lambda 没有该模块，栈卡 1 小时后回滚。</span></td><td>改为 urllib 直接回传，出错也立即返回 FAILED</td><td><span class="tag t-b">阻断</span></td></tr><tr><td style="font-family:var(--mono);color:var(--a1)">09</td><td><b>没有组织 Trail</b><br><span style="font-size:13px">CloudTrail → EventBridge 需要正在记录的 Trail，否则一条事件都没有。</span></td><td><code>deploy-forwarder.sh</code> 检测并自动创建组织 Trail</td><td><span class="tag t-b">阻断</span></td></tr><tr><td style="font-family:var(--mono);color:var(--a1)">10</td><td><b>总线未就绪就下发转发</b><br><span style="font-size:13px">Amplify 构建约 20 分钟，提前下发会转发失败。</span></td><td>脚本轮询总线策略包含组织 ID 后再部署 StackSet</td><td><span class="tag t-w">易错</span></td></tr><tr><td style="font-family:var(--mono);color:var(--a1)">11</td><td><b>在错误 Region 测试</b><br><span style="font-size:13px">控制台默认 Region 不在转发范围，表里一直为空。</span></td><td><code>FORWARDER_REGIONS</code> 可配置；验证清单强调 Region</td><td><span class="tag t-w">易错</span></td></tr><tr><td style="font-family:var(--mono);color:var(--a1)">12</td><td><b>聊天复制带入反斜杠</b><br><span style="font-size:13px"><code>IDC\_LOGIN\_URL</code> 这类变量名导致参数缺失。</span></td><td>预检检测 <code>\_</code></td><td><span class="tag t-w">易错</span></td></tr></table>
+
+<h2 class="rv"><span class="n">04</span>交付给客户前的检查清单</h2>
+<div class="grid g2 rv">
+<div class="card"><h3>✅ 功能</h3><p>申请 / 审批 / 自动授权 / 到期回收 / 提前撤销；审计员可见全部记录；Session activity 有数据。</p></div>
+<div class="card"><h3>🔒 安全</h3><p>TEAM 账号不放其他负载；权限集按任务收窄；用户启用 MFA；保留 break-glass 访问。</p></div>
+<div class="card"><h3>💰 成本</h3><p>DynamoDB 按需 + TTL；组织 Trail 首份管理事件免费，仅 S3 存储；无 CloudTrail Lake 摄入费。</p></div>
+<div class="card"><h3>🧹 回退与清理</h3><p>改回 ARN / read 模式即可回退；删除 StackSet、Amplify 应用、主栈与 SAML 应用即可清理。</p></div>
+</div>
+
+</section><div class="foot"><span>TEAM · 基于 IAM Identity Center 的临时提权与近实时审计</span><span>参考：<a href="https://aws.amazon.com/blogs/security/temporary-elevated-access-management-with-iam-identity-center/" target="_blank">AWS Security Blog</a></span></div></div>
+<script>
+function show(k){document.querySelectorAll('.pg').forEach(p=>p.classList.toggle('on',p.id==='pg-'+k));
+document.querySelectorAll('nav a[data-k]').forEach(a=>a.classList.toggle('on',a.dataset.k===k));
+window.scrollTo(0,0);document.querySelectorAll('#pg-'+k+' .rv').forEach(el=>el.classList.add('in'));}
+document.querySelectorAll('nav a[data-k]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();show(a.dataset.k);history.replaceState(null,'','#'+a.dataset.k)}));
+show((location.hash||'#ov').slice(1).replace(/[^a-z]/g,'')||'ov');
+</script></body></html>

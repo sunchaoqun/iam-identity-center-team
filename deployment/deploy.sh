@@ -17,6 +17,11 @@ set -xe
 
 . "./parameters.sh"
 
+# ---- Defaults & preflight (added for EventBridge audit mode) ----
+CACHE_TTL=${CACHE_TTL:-604800}
+CLOUDTRAIL_AUDIT_LOGS=${CLOUDTRAIL_AUDIT_LOGS:-eventbridge}
+./preflight.sh
+
 if [ -z "$TEAM_ACCOUNT" ]; then 
   export AWS_PROFILE=$ORG_MASTER_PROFILE
 else 
